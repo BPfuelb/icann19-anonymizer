@@ -88,7 +88,26 @@ def load_data():
       if extension == '.tar.gz':
         with tarfile.open(data['db_zip_file_local'], 'r:*') as tar_gz_file:
           member = [x for x in tar_gz_file.getmembers() if re.compile('^.*.mmdb$').match(x.name)][0]
-          tar_gz_file.extractall(data['db_file_dir'], [member])
+          def is_within_directory(directory, target):
+              
+              abs_directory = os.path.abspath(directory)
+              abs_target = os.path.abspath(target)
+          
+              prefix = os.path.commonprefix([abs_directory, abs_target])
+              
+              return prefix == abs_directory
+          
+          def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+          
+              for member in tar.getmembers():
+                  member_path = os.path.join(path, member.name)
+                  if not is_within_directory(path, member_path):
+                      raise Exception("Attempted Path Traversal in Tar File")
+          
+              tar.extractall(path, members, numeric_owner=numeric_owner) 
+              
+          
+          safe_extract(tar_gz_file, data["db_file_dir"], [member])
           shutil.move(data['db_file_dir'] + member.name, data['db_file_dir'])
           old_directory = data['db_file_dir'] + member.name.split('/')[0]
           if not os.listdir(old_directory):
